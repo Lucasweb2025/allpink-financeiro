@@ -189,23 +189,26 @@
   </div>
 
   <script>
-    // 1. CONFIGURAÇÃO DO SEU FIREBASE (Cole as suas credenciais reais aqui)
+    // 1. CONFIGURAÇÃO DO SEU FIREBASE (Chaves integradas com sucesso!)
     const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
+      apiKey: "AIzaSyDSfj6A4PortbieMelYDPNwZ9rJ84BW7ns",
       authDomain: "all-pink.firebaseapp.com",
-      databaseURL: "https://all-pink-default-rtdb.firebaseio.com", // Confirme sua URL do Realtime Database
+      databaseURL: "https://all-pink-default-rtdb.firebaseio.com",
       projectId: "all-pink",
-      storageBucket: "all-pink.appspot.com",
+      storageBucket: "all-pink.firebasestorage.app",
+      messagingSenderId: "932996264727",
+      appId: "1:932996264727:web:fe800602542154f753bd52",
+      measurementId: "G-BB83D3BRNW"
     };
     
-    // Inicializa o Firebase se não tiver sido inicializado
+    // Inicializa o Firebase
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const dbRef = firebase.database().ref('financeiro_oficial');
 
-    // 2. CONTROLE DE ACESSO COM SENHA (Proteção simples para GitHub Pages)
+    // 2. CONTROLE DE ACESSO COM SENHA (Você pode alterar 'pinkboss2026' para o que quiser)
     function verificarSenha() {
       const senha = document.getElementById('pass-input').value;
-      if(senha === 'pinkboss2026') { // Defina sua senha aqui!
+      if(senha === 'pinkboss2026') { 
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-dashboard').style.display = 'block';
         inicializarGrafico();
@@ -272,6 +275,9 @@
         document.getElementById('fluxo-desc').value = '';
         document.getElementById('fluxo-valor').value = '';
         alert('Movimentação registrada com sucesso!');
+      }).catch((err) => {
+        console.error(err);
+        alert('Erro ao salvar no banco de dados.');
       });
     });
 
@@ -310,7 +316,7 @@
         
         const saldoCaixa = somatorioEntradas - somatorioSaidas;
         
-        // Atualiza textos
+        // Atualiza textos na tela
         document.getElementById('txt-saldo').innerText = `R$ ${saldoCaixa.toFixed(2).replace('.',',')}`;
         document.getElementById('txt-saldo').style.color = saldoCaixa >= 0 ? 'var(--dark)' : 'var(--danger)';
         document.getElementById('txt-entradas').innerText = `R$ ${somatorioEntradas.toFixed(2).replace('.',',')}`;
