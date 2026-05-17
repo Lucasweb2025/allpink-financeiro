@@ -44,7 +44,7 @@
       padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px;
     }
 
-    /* PAINEL PRINCIPAL (Escondido por padrão) */
+    /* PAINEL PRINCIPAL */
     #main-dashboard { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
     
     header {
@@ -77,26 +77,50 @@
     .block { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .block h3 { margin-top: 0; margin-bottom: 20px; color: #495057; }
 
-    /* FORMULÁRIOS */
+    /* CONTAINERS DE GRÁFICOS */
+    .charts-container {
+      display: grid; grid-template-columns: 1fr; gap: 20px;
+    }
+    @media(min-width: 600px) { .charts-container { grid-template-columns: 1fr 1fr; } }
+
+    /* FORMULÁRIOS E BOTÕES CORRIGIDOS */
     .form-group { margin-bottom: 15px; }
     .form-group label { display: block; margin-bottom: 5px; font-size: 14px; font-weight: 500; }
     .form-group input, .form-group select {
       width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;
     }
     .btn-submit {
-      width: 100%; padding: 12px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; margin-top: 10px;
+      width: 100%; padding: 14px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; transition: all 0.2s ease;
     }
-    .btn-entrada { background-color: var(--success); }
-    .btn-saida { background-color: var(--danger); }
+    
+    /* CORES VIVAS COM SOMBRA PROFISSIONAL */
+    .btn-success { 
+      background-color: var(--success) !important; 
+      box-shadow: 0 4px 12px rgba(46, 196, 182, 0.4);
+    }
+    .btn-success:hover { 
+      filter: brightness(0.9);
+      transform: translateY(-1px);
+    }
+    
+    .btn-danger { 
+      background-color: var(--danger) !important; 
+      box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
+    }
+    .btn-danger:hover { 
+      filter: brightness(0.9);
+      transform: translateY(-1px);
+    }
 
     /* TABELA DE EXTRATO */
     .table-container { overflow-x: auto; max-height: 400px; }
     table { width: 100%; border-collapse: collapse; text-align: left; }
-    th, td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+    th, td { padding: 12px; border-bottom: 1px solid #dee2e6; font-size: 14px; }
     th { background-color: #f8f9fa; color: #495057; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block; }
     .badge.entrada { background: #d8f3dc; color: #1b4332; }
     .badge.saida { background: #f8d7da; color: #842029; }
+    .badge-cat { background: #e9ecef; color: #495057; font-size: 12px; font-weight: 500; }
     
     .btn-delete { background: none; border: none; color: var(--danger); cursor: pointer; font-weight: bold; }
   </style>
@@ -136,9 +160,17 @@
     <div class="dashboard-grid">
       
       <div style="display: flex; flex-direction: column; gap: 30px;">
-        <div class="block" style="min-height: 250px;">
-          <h3>📊 Visão Geral (Entradas vs Saídas)</h3>
-          <canvas id="financeChart" style="max-height: 280px;"></canvas>
+        <div class="block">
+          <div class="charts-container">
+            <div>
+              <h3 style="font-size:16px;">📊 Balanço Geral</h3>
+              <canvas id="financeChart" style="max-height: 220px;"></canvas>
+            </div>
+            <div>
+              <h3 style="font-size:16px;">🎯 Vendas por Categoria</h3>
+              <canvas id="categoryChart" style="max-height: 220px;"></canvas>
+            </div>
+          </div>
         </div>
 
         <div class="block">
@@ -150,7 +182,8 @@
                   <th>Data</th>
                   <th>Descrição</th>
                   <th>Tipo</th>
-                  <th>Valor</th>
+                  <th>Categoria</th>
+                  <th>Valor Total</th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -167,19 +200,36 @@
           <form id="fluxo-form">
             <div class="form-group">
               <label>Tipo de Registro</label>
-              <select id="fluxo-tipo" onchange="ajustarBotao()" required>
+              <select id="fluxo-tipo" onchange="configurarFormulario()" required>
                 <option value="Entrada">🟢 Entrada (Venda / Receita)</option>
                 <option value="Saída">🔴 Saída (Investimento / Custo / Compra)</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Descrição / Fornecedor</label>
-              <input type="text" id="fluxo-desc" placeholder="Ex: Compra de Batons, Frete, Venda Mara" required>
+              <label>Categoria</label>
+              <select id="fluxo-categoria" required>
+                </select>
             </div>
             <div class="form-group">
-              <label>Valor (R$)</label>
-              <input type="number" id="fluxo-valor" step="0.01" placeholder="0.00" required>
+              <label>Item / Descrição detalhada</label>
+              <input type="text" id="fluxo-desc" placeholder="Ex: Rímel Melu, Sabonete Dermachem, Sacolas decoradas" required>
             </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+              <div style="flex: 2;">
+                <label style="display:block; font-size:14px; font-weight:500; margin-bottom:5px;">Preço Unitário (R$)</label>
+                <input type="number" id="fluxo-valor" step="0.01" placeholder="0.00" required oninput="calcularTotalPreview()" style="width:100%; padding:10px; border:1px solid #ced4da; border-radius:6px; box-sizing:border-box;">
+              </div>
+              <div style="flex: 1;">
+                <label style="display:block; font-size:14px; font-weight:500; margin-bottom:5px;">Qtd</label>
+                <input type="number" id="fluxo-qtd" value="1" min="1" required oninput="calcularTotalPreview()" style="width:100%; padding:10px; border:1px solid #ced4da; border-radius:6px; box-sizing:border-box;">
+              </div>
+            </div>
+
+            <div style="margin-bottom: 20px; padding: 10px; background: #fff0f6; border-radius: 6px; font-size: 14px; font-weight: bold; color: var(--primary); text-align: center; border: 1px dashed var(--primary);">
+              Total do Lançamento: <span id="fluxo-total-preview">R$ 0,00</span>
+            </div>
+
             <button type="submit" id="btn-acao" class="btn-submit btn-success">Confirmar Entrada</button>
           </form>
         </div>
@@ -189,7 +239,7 @@
   </div>
 
   <script>
-    // 1. CONFIGURAÇÃO DO SEU FIREBASE (Chaves integradas com sucesso!)
+    // 1. CONFIGURAÇÃO DO SEU FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyDSfj6A4PortbieMelYDPNwZ9rJ84BW7ns",
       authDomain: "all-pink.firebaseapp.com",
@@ -201,17 +251,21 @@
       measurementId: "G-BB83D3BRNW"
     };
     
-    // Inicializa o Firebase
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const dbRef = firebase.database().ref('financeiro_oficial');
 
-    // 2. CONTROLE DE ACESSO COM SENHA (Você pode alterar 'pinkboss2026' para o que quiser)
+    // Categorias Oficiais All Pink
+    const categoriasEntrada = ["💄 Maquiagem", "🧼 Skincare", "🩷 Acessórios", "🌸 Corpo & Fragrâncias", "🎁 Kits", "✨ Outros"];
+    const categoriasSaida = ["📦 Compra de Estoque", "🛍️ Embalagens", "🚚 Frete / Logística", "🚚 Investimento Inicial", "📣 Marketing / Anúncios", "🛠️ Custos Operacionais"];
+
+    // 2. CONTROLE DE ACESSO COM SENHA
     function verificarSenha() {
       const senha = document.getElementById('pass-input').value;
       if(senha === 'pinkboss2026') { 
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-dashboard').style.display = 'block';
-        inicializarGrafico();
+        configurarFormulario();
+        inicializarGraficos();
         carregarDadosFinanceiros();
       } else {
         alert('Senha incorreta! Acesso negado.');
@@ -224,34 +278,69 @@
       document.getElementById('main-dashboard').style.display = 'none';
     }
 
-    function ajustarBotao() {
+    // Altera dinamicamente o formulário baseado em Entrada ou Saída
+    function configurarFormulario() {
       const tipo = document.getElementById('fluxo-tipo').value;
       const btn = document.getElementById('btn-acao');
+      const selectCat = document.getElementById('fluxo-categoria');
+      
+      selectCat.innerHTML = '';
+      
       if(tipo === 'Entrada') {
         btn.innerText = 'Confirmar Entrada';
         btn.className = 'btn-submit btn-success';
+        categoriasEntrada.forEach(cat => {
+          selectCat.innerHTML += `<option value="${cat}">${cat}</option>`;
+        });
       } else {
         btn.innerText = 'Confirmar Saída';
         btn.className = 'btn-submit btn-danger';
+        categoriasSaida.forEach(cat => {
+          selectCat.innerHTML += `<option value="${cat}">${cat}</option>`;
+        });
       }
+      calcularTotalPreview();
     }
 
-    // 3. ESTRUTURA DO GRÁFICO (CHART.JS)
-    let meuGrafico;
-    function inicializarGrafico() {
-      const ctx = document.getElementById('financeChart').getContext('2d');
-      meuGrafico = new Chart(ctx, {
+    // Conta automática em tempo real na tela
+    function calcularTotalPreview() {
+      const valorUnitario = parseFloat(document.getElementById('fluxo-valor').value) || 0;
+      const quantidade = parseInt(document.getElementById('fluxo-qtd').value) || 1;
+      const totalCalculado = valorUnitario * quantidade;
+      document.getElementById('fluxo-total-preview').innerText = `R$ ${totalCalculado.toFixed(2).replace('.', ',')}`;
+    }
+
+    // 3. ESTRUTURA DOS GRÁFICOS (CHART.JS)
+    let meuGraficoGeral;
+    let meuGraficoCategorias;
+
+    function inicializarGraficos() {
+      const ctxGeral = document.getElementById('financeChart').getContext('2d');
+      meuGraficoGeral = new Chart(ctxGeral, {
         type: 'bar',
         data: {
           labels: ['Entradas', 'Saídas'],
           datasets: [{
-            label: 'Valores Acumulados (R$)',
+            label: 'Total (R$)',
             data: [0, 0],
             backgroundColor: ['#2ec4b6', '#e63946'],
-            borderRadius: 8
+            borderRadius: 6
           }]
         },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+
+      const ctxCat = document.getElementById('categoryChart').getContext('2d');
+      meuGraficoCategorias = new Chart(ctxCat, {
+        type: 'doughnut',
+        data: {
+          labels: ["Maquiagem", "Skincare", "Acessórios", "Corpo & Fragrâncias", "Kits", "Outros"],
+          datasets: [{
+            data: [0, 0, 0, 0, 0, 0],
+            backgroundColor: ['#ff2d88', '#06d6a0', '#ffb703', '#118ab2', '#9b5de5', '#6c757d']
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
       });
     }
 
@@ -260,21 +349,32 @@
       e.preventDefault();
       
       const tipo = document.getElementById('fluxo-tipo').value;
-      const desc = document.getElementById('fluxo-desc').value;
-      const valor = parseFloat(document.getElementById('fluxo-valor').value);
+      const categoria = document.getElementById('fluxo-categoria').value;
+      let desc = document.getElementById('fluxo-desc').value;
+      const valorUnitario = parseFloat(document.getElementById('fluxo-valor').value);
+      const qtd = parseInt(document.getElementById('fluxo-qtd').value);
+      
+      const valorTotal = valorUnitario * qtd;
+      
+      if (qtd > 1) {
+        desc = `${desc} (${qtd}x R$ ${valorUnitario.toFixed(2).replace('.', ',')})`;
+      }
       
       const hoje = new Date();
       const dataStr = hoje.toLocaleDateString('pt-BR') + ' ' + hoje.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 
       dbRef.push({
         tipo: tipo,
+        categoria: categoria,
         descricao: desc,
-        valor: valor,
+        valor: valorTotal,
         data: dataStr
       }).then(() => {
         document.getElementById('fluxo-desc').value = '';
         document.getElementById('fluxo-valor').value = '';
-        alert('Movimentação registrada com sucesso!');
+        document.getElementById('fluxo-qtd').value = '1';
+        document.getElementById('fluxo-total-preview').innerText = 'R$ 0,00';
+        alert('Movimentação registrada com sucesso! 💰');
       }).catch((err) => {
         console.error(err);
         alert('Erro ao salvar no banco de dados.');
@@ -288,50 +388,73 @@
         let somatorioSaidas = 0;
         let tabelaHtml = '';
         
+        let totaisPorCategoria = {
+          "💄 Maquiagem": 0, "🧼 Skincare": 0, "🩷 Acessórios": 0, "🌸 Corpo & Fragrâncias": 0, "🎁 Kits": 0, "✨ Outros": 0
+        };
+        
         const dados = snapshot.val();
         
         if(dados) {
-          const chaves = Object.keys(dados).reverse(); // Mais recente primeiro
+          const chaves = Object.keys(dados).reverse();
           
           chaves.forEach(key => {
             const item = dados[key];
             const v = parseFloat(item.valor);
+            const catLimpa = item.categoria || "✨ Outros";
             
-            if(item.tipo === 'Entrada') somatorioEntradas += v;
-            if(item.tipo === 'Saída') somatorioSaidas += v;
+            if(item.tipo === 'Entrada') {
+              somatorioEntradas += v;
+              if (totaisPorCategoria[catLimpa] !== undefined) {
+                totaisPorCategoria[catLimpa] += v;
+              } else {
+                totaisPorCategoria["✨ Outros"] += v;
+              }
+            } else if(item.tipo === 'Saída') {
+              somatorioSaidas += v;
+            }
             
             tabelaHtml += `
               <tr>
                 <td style="color: #666; font-size: 13px;">${item.data}</td>
                 <td style="font-weight: 500;">${item.descricao}</td>
                 <td><span class="badge ${item.tipo === 'Entrada' ? 'entrada' : 'saida'}">${item.tipo}</span></td>
+                <td><span class="badge badge-cat">${catLimpa}</span></td>
                 <td style="font-weight: bold; color: ${item.tipo === 'Entrada' ? 'var(--success)' : 'var(--danger)'}">R$ ${v.toFixed(2).replace('.',',')}</td>
                 <td><button class="btn-delete" onclick="deletarRegistro('${key}')">✕</button></td>
               </tr>
             `;
           });
         } else {
-          tabelaHtml = '<tr><td colspan="5" style="text-align:center; color:#999; padding:20px;">Nenhum lançamento feito ainda.</td></tr>';
+          tabelaHtml = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Nenhum lançamento feito ainda.</td></tr>';
         }
         
         const saldoCaixa = somatorioEntradas - somatorioSaidas;
         
-        // Atualiza textos na tela
         document.getElementById('txt-saldo').innerText = `R$ ${saldoCaixa.toFixed(2).replace('.',',')}`;
         document.getElementById('txt-saldo').style.color = saldoCaixa >= 0 ? 'var(--dark)' : 'var(--danger)';
         document.getElementById('txt-entradas').innerText = `R$ ${somatorioEntradas.toFixed(2).replace('.',',')}`;
         document.getElementById('txt-saidas').innerText = `R$ ${somatorioSaidas.toFixed(2).replace('.',',')}`;
         document.getElementById('lista-fluxo').innerHTML = tabelaHtml;
         
-        // Atualiza Gráfico dinamicamente
-        if(meuGrafico) {
-          meuGrafico.data.datasets[0].data = [somatorioEntradas, somatorioSaidas];
-          meuGrafico.update();
+        if(meuGraficoGeral) {
+          meuGraficoGeral.data.datasets[0].data = [somatorioEntradas, somatorioSaidas];
+          meuGraficoGeral.update();
+        }
+
+        if(meuGraficoCategorias) {
+          meuGraficoCategorias.data.datasets[0].data = [
+            totaisPorCategoria["💄 Maquiagem"],
+            totaisPorCategoria["🧼 Skincare"],
+            totaisPorCategoria["🩷 Acessórios"],
+            totaisPorCategoria["🌸 Corpo & Fragrâncias"],
+            totaisPorCategoria["🎁 Kits"],
+            totaisPorCategoria["✨ Outros"]
+          ];
+          meuGraficoCategorias.update();
         }
       });
     }
 
-    // 6. DELETAR REGISTRO
     function deletarRegistro(id) {
       if(confirm('Tem certeza que deseja apagar este lançamento do histórico?')) {
         dbRef.child(id).remove();
