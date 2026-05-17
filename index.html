@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Pink - Dashboard Financeiro</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <style>
+    :root {
+      --primary: #ff2d88;
+      --success: #2ec4b6;
+      --danger: #e63946;
+      --dark: #2b2d42;
+      --light: #f8f9fa;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      background-color: #f0f2f5;
+      color: var(--dark);
+    }
+    /* TELA DE LOGIN */
+    #login-screen {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(135deg, var(--dark) 0%, #111 100%);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 9999;
+    }
+    .login-box {
+      background: white; padding: 40px; border-radius: 16px;
+      text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; max-width: 360px;
+    }
+    .login-box h2 { color: var(--primary); margin-bottom: 20px; }
+    .login-box input {
+      width: 100%; padding: 12px; margin-bottom: 20px;
+      border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px;
+    }
+    .login-box button {
+      background: var(--primary); color: white; border: none; width: 100%;
+      padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px;
+    }
+
+    /* PAINEL PRINCIPAL (Escondido por padrão) */
+    #main-dashboard { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;
+    }
+    header h1 { margin: 0; color: var(--dark); font-size: 24px; }
+    header button { background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; }
+
+    /* CARDS DE RESUMO */
+    .cards-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;
+    }
+    .card {
+      background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border-left: 6px solid #ccc;
+    }
+    .card.saldo { border-left-color: var(--dark); }
+    .card.entradas { border-left-color: var(--success); }
+    .card.saidas { border-left-color: var(--danger); }
+    .card span { font-size: 14px; color: #6c757d; font-weight: 600; }
+    .card h2 { margin: 10px 0 0 0; font-size: 28px; }
+
+    /* CONTEÚDO EM DUAS COLUNAS */
+    .dashboard-grid {
+      display: grid; grid-template-columns: 1fr; gap: 30px;
+    }
+    @media(min-width: 900px) { .dashboard-grid { grid-template-columns: 2fr 1fr; } }
+
+    .block { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .block h3 { margin-top: 0; margin-bottom: 20px; color: #495057; }
+
+    /* FORMULÁRIOS */
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-size: 14px; font-weight: 500; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box;
+    }
+    .btn-submit {
+      width: 100%; padding: 12px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; font-size: 15px; margin-top: 10px;
+    }
+    .btn-entrada { background-color: var(--success); }
+    .btn-saida { background-color: var(--danger); }
+
+    /* TABELA DE EXTRATO */
+    .table-container { overflow-x: auto; max-height: 400px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+    th { background-color: #f8f9fa; color: #495057; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge.entrada { background: #d8f3dc; color: #1b4332; }
+    .badge.saida { background: #f8d7da; color: #842029; }
+    
+    .btn-delete { background: none; border: none; color: var(--danger); cursor: pointer; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div id="login-screen">
+    <div class="login-box">
+      <h2>All Pink Finance</h2>
+      <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Área Restrita - Digite a senha administrativa</p>
+      <input type="password" id="pass-input" placeholder="Sua senha secreta">
+      <button onclick="verificarSenha()">Acessar Painel</button>
+    </div>
+  </div>
+
+  <div id="main-dashboard">
+    <header>
+      <h1>🌸 All Pink Beauty • Gestão Financeira</h1>
+      <button onclick="logout()">Sair</button>
+    </header>
+
+    <div class="cards-grid">
+      <div class="card saldo">
+        <span>Saldo Caixa Atual</span>
+        <h2 id="txt-saldo" style="color: var(--dark);">R$ 0,00</h2>
+      </div>
+      <div class="card entradas">
+        <span>Total de Entradas</span>
+        <h2 id="txt-entradas" style="color: var(--success);">R$ 0,00</h2>
+      </div>
+      <div class="card saidas">
+        <span>Total de Saídas (Custos)</span>
+        <h2 id="txt-saidas" style="color: var(--danger);">R$ 0,00</h2>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      
+      <div style="display: flex; flex-direction: column; gap: 30px;">
+        <div class="block" style="min-height: 250px;">
+          <h3>📊 Visão Geral (Entradas vs Saídas)</h3>
+          <canvas id="financeChart" style="max-height: 280px;"></canvas>
+        </div>
+
+        <div class="block">
+          <h3>📋 Extrato de Fluxo de Caixa</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Tipo</th>
+                  <th>Valor</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="lista-fluxo">
+                </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 30px;">
+        <div class="block">
+          <h3>💰 Lançar Movimentação</h3>
+          <form id="fluxo-form">
+            <div class="form-group">
+              <label>Tipo de Registro</label>
+              <select id="fluxo-tipo" onchange="ajustarBotao()" required>
+                <option value="Entrada">🟢 Entrada (Venda / Receita)</option>
+                <option value="Saída">🔴 Saída (Investimento / Custo / Compra)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Descrição / Fornecedor</label>
+              <input type="text" id="fluxo-desc" placeholder="Ex: Compra de Batons, Frete, Venda Mara" required>
+            </div>
+            <div class="form-group">
+              <label>Valor (R$)</label>
+              <input type="number" id="fluxo-valor" step="0.01" placeholder="0.00" required>
+            </div>
+            <button type="submit" id="btn-acao" class="btn-submit btn-success">Confirmar Entrada</button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // 1. CONFIGURAÇÃO DO SEU FIREBASE (Cole as suas credenciais reais aqui)
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "all-pink.firebaseapp.com",
+      databaseURL: "https://all-pink-default-rtdb.firebaseio.com", // Confirme sua URL do Realtime Database
+      projectId: "all-pink",
+      storageBucket: "all-pink.appspot.com",
+    };
+    
+    // Inicializa o Firebase se não tiver sido inicializado
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const dbRef = firebase.database().ref('financeiro_oficial');
+
+    // 2. CONTROLE DE ACESSO COM SENHA (Proteção simples para GitHub Pages)
+    function verificarSenha() {
+      const senha = document.getElementById('pass-input').value;
+      if(senha === 'pinkboss2026') { // Defina sua senha aqui!
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-dashboard').style.display = 'block';
+        inicializarGrafico();
+        carregarDadosFinanceiros();
+      } else {
+        alert('Senha incorreta! Acesso negado.');
+      }
+    }
+    
+    function logout() {
+      document.getElementById('pass-input').value = '';
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('main-dashboard').style.display = 'none';
+    }
+
+    function ajustarBotao() {
+      const tipo = document.getElementById('fluxo-tipo').value;
+      const btn = document.getElementById('btn-acao');
+      if(tipo === 'Entrada') {
+        btn.innerText = 'Confirmar Entrada';
+        btn.className = 'btn-submit btn-success';
+      } else {
+        btn.innerText = 'Confirmar Saída';
+        btn.className = 'btn-submit btn-danger';
+      }
+    }
+
+    // 3. ESTRUTURA DO GRÁFICO (CHART.JS)
+    let meuGrafico;
+    function inicializarGrafico() {
+      const ctx = document.getElementById('financeChart').getContext('2d');
+      meuGrafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Entradas', 'Saídas'],
+          datasets: [{
+            label: 'Valores Acumulados (R$)',
+            data: [0, 0],
+            backgroundColor: ['#2ec4b6', '#e63946'],
+            borderRadius: 8
+          }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    // 4. ENVIO DE DADOS PARA O FIREBASE
+    document.getElementById('fluxo-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const tipo = document.getElementById('fluxo-tipo').value;
+      const desc = document.getElementById('fluxo-desc').value;
+      const valor = parseFloat(document.getElementById('fluxo-valor').value);
+      
+      const hoje = new Date();
+      const dataStr = hoje.toLocaleDateString('pt-BR') + ' ' + hoje.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+
+      dbRef.push({
+        tipo: tipo,
+        descricao: desc,
+        valor: valor,
+        data: dataStr
+      }).then(() => {
+        document.getElementById('fluxo-desc').value = '';
+        document.getElementById('fluxo-valor').value = '';
+        alert('Movimentação registrada com sucesso!');
+      });
+    });
+
+    // 5. LEITURA EM TEMPO REAL E CÁLCULO DE DASHBOARD
+    function carregarDadosFinanceiros() {
+      dbRef.on('value', (snapshot) => {
+        let somatorioEntradas = 0;
+        let somatorioSaidas = 0;
+        let tabelaHtml = '';
+        
+        const dados = snapshot.val();
+        
+        if(dados) {
+          const chaves = Object.keys(dados).reverse(); // Mais recente primeiro
+          
+          chaves.forEach(key => {
+            const item = dados[key];
+            const v = parseFloat(item.valor);
+            
+            if(item.tipo === 'Entrada') somatorioEntradas += v;
+            if(item.tipo === 'Saída') somatorioSaidas += v;
+            
+            tabelaHtml += `
+              <tr>
+                <td style="color: #666; font-size: 13px;">${item.data}</td>
+                <td style="font-weight: 500;">${item.descricao}</td>
+                <td><span class="badge ${item.tipo === 'Entrada' ? 'entrada' : 'saida'}">${item.tipo}</span></td>
+                <td style="font-weight: bold; color: ${item.tipo === 'Entrada' ? 'var(--success)' : 'var(--danger)'}">R$ ${v.toFixed(2).replace('.',',')}</td>
+                <td><button class="btn-delete" onclick="deletarRegistro('${key}')">✕</button></td>
+              </tr>
+            `;
+          });
+        } else {
+          tabelaHtml = '<tr><td colspan="5" style="text-align:center; color:#999; padding:20px;">Nenhum lançamento feito ainda.</td></tr>';
+        }
+        
+        const saldoCaixa = somatorioEntradas - somatorioSaidas;
+        
+        // Atualiza textos
+        document.getElementById('txt-saldo').innerText = `R$ ${saldoCaixa.toFixed(2).replace('.',',')}`;
+        document.getElementById('txt-saldo').style.color = saldoCaixa >= 0 ? 'var(--dark)' : 'var(--danger)';
+        document.getElementById('txt-entradas').innerText = `R$ ${somatorioEntradas.toFixed(2).replace('.',',')}`;
+        document.getElementById('txt-saidas').innerText = `R$ ${somatorioSaidas.toFixed(2).replace('.',',')}`;
+        document.getElementById('lista-fluxo').innerHTML = tabelaHtml;
+        
+        // Atualiza Gráfico dinamicamente
+        if(meuGrafico) {
+          meuGrafico.data.datasets[0].data = [somatorioEntradas, somatorioSaidas];
+          meuGrafico.update();
+        }
+      });
+    }
+
+    // 6. DELETAR REGISTRO
+    function deletarRegistro(id) {
+      if(confirm('Tem certeza que deseja apagar este lançamento do histórico?')) {
+        dbRef.child(id).remove();
+      }
+    }
+  </script>
+</body>
+</html>
